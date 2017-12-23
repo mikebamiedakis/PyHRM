@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import addEventHandler
+import sklearn.cluster as sc
 # ### Read and Plot Melting Data
 
 # In[ ]:
@@ -32,11 +33,11 @@ def linesPlot(df,eventHandler):
 			eventHandler.generate(df["Temperature"].values,df[column].values,column)
 
 
-def generalPlot(title,df,eventHandler):
+def generalPlot(filepath,title,df,eventHandler):
 
 	linesPlot(df,eventHandler)
 	plt.title(title)
-	plt.savefig(title+'.png')
+	plt.savefig(filepath+title+'.png')
 
 
 j = 1
@@ -48,7 +49,7 @@ if not os.path.exists(filepath[:-1]):
 
 fig,ax = plt.subplots()
 eventHandler1 = addEventHandler.eventHandler(fig,ax)
-generalPlot(filepath+"Component Melt",df,eventHandler1)
+generalPlot(filepath,"Component Melt",df,eventHandler1)
 j+=1
 
 
@@ -60,7 +61,7 @@ df_melt=df.ix[(df.iloc[:,0]>minTemperature) & (df.iloc[:,0]< maxTemperature)]
 df_data=df_melt.ix[:,1:]
 fig2,ax2 = plt.subplots()
 eventHandler2 = addEventHandler.eventHandler(fig2,ax2)
-generalPlot(filepath+"Temperature Melt",df_melt,eventHandler2)
+generalPlot(filepath,"Temperature Melt",df_melt,eventHandler2)
 
 j+=1
 
@@ -77,7 +78,7 @@ df_norm= (df_data - df_data.min()) / (df_data.max()-df_data.min())*100
 fig3,ax3 = plt.subplots()
 eventHandler3 = addEventHandler.eventHandler(fig3,ax3)
 df_norm = df_norm.assign(Temperature=pd.Series(df_melt.ix[:,0]))
-generalPlot(filepath+"Normalized Melt",df_norm,eventHandler3)
+generalPlot(filepath,"Normalized Melt",df_norm,eventHandler3)
 
 # ### Calculate and Show Diff Plot 
 
@@ -85,7 +86,7 @@ fig4,ax4 = plt.subplots()
 dfdif = df_norm.sub(df_norm[referenceSample],axis=0)
 eventHandler4 = addEventHandler.eventHandler(fig4,ax4)
 dfdif.assign(Temperature=pd.Series(df_melt.ix[:,0]))
-generalPlot(filepath+"Difference Melt",dfdif,eventHandler4)
+generalPlot(filepath,"Difference Melt",dfdif,eventHandler4)
 del dfdif['Temperature']
 j+=1
 
@@ -96,8 +97,7 @@ j+=1
 
 # In[ ]:
 
-import sklearn.cluster as sc
-from IPython.display import display
+
 
 
 # In[ ]:
@@ -110,7 +110,6 @@ labels = hc.labels_
 results = pd.DataFrame([dfdif.T.index,labels])
 printResults = ""
 for i in range(0,clusterNumber):
-	display(results.ix[:0,results.ix[1]==i])
 	printResults = printResults + str(results.ix[:0,results.ix[1]==i])+'\n'
 print printResults
 
