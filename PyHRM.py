@@ -10,32 +10,61 @@
 
 # ### Import Python modules for analysis
 
-# In[ ]:
 
-get_ipython().magic(u'matplotlib inline')
-
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
-
+import addEventHandler
 # ### Read and Plot Melting Data
 
 # In[ ]:
+#get_ipython().magic(u'matplotlib inline')
+filename = 'test'
+referenceSample = 'C5'
+clusterNumber = 3
+minTemperature= 75
+maxTemperature = 81
 
-df = pd.read_csv('Sample-HRM-p50-genotyping.csv')
-plt.plot(df[[0]],df.ix[:,1:])
-plt.show()
+def linesPlot(df,eventHandler):
+	for column in df:
+		if column != "Temperature":
+			eventHandler.generate(df["Temperature"].values,df[column].values,column)
+
+
+def generalPlot(title,df,eventHandler):
+
+	linesPlot(df,eventHandler)
+	plt.title(title)
+	plt.savefig(title+'.png')
+
+
+j = 1
+df = pd.read_csv(filename+'.csv')
+filepath = filename + '/'
+if not os.path.exists(filepath[:-1]):
+    os.makedirs(filepath[:-1])
+
+
+fig,ax = plt.subplots()
+eventHandler1 = addEventHandler.eventHandler(fig,ax)
+generalPlot(filepath+"Component Melt",df,eventHandler1)
+j+=1
 
 
 # ### Select melting range
 
 # In[ ]:
 
-df_melt=df.ix[(df.iloc[:,0]>75) & (df.iloc[:,0]<89)]
+df_melt=df.ix[(df.iloc[:,0]>minTemperature) & (df.iloc[:,0]< maxTemperature)]
 df_data=df_melt.ix[:,1:]
-plt.plot(df_melt[[0]],df_data)
-plt.show()
+fig2,ax2 = plt.subplots()
+eventHandler2 = addEventHandler.eventHandler(fig2,ax2)
+generalPlot(filepath+"Temperature Melt",df_melt,eventHandler2)
+
+j+=1
+
+
 
 
 # ### Normalizing 
@@ -43,17 +72,22 @@ plt.show()
 # In[ ]:
 
 df_norm= (df_data - df_data.min()) / (df_data.max()-df_data.min())*100
-plt.plot(df_melt[[0]],df_norm)
-plt.show()
 
+
+fig3,ax3 = plt.subplots()
+eventHandler3 = addEventHandler.eventHandler(fig3,ax3)
+df_norm = df_norm.assign(Temperature=pd.Series(df_melt.ix[:,0]))
+generalPlot(filepath+"Normalized Melt",df_norm,eventHandler3)
 
 # ### Calculate and Show Diff Plot 
 
-# In[ ]:
-
-dfdif = df_norm.sub(df_norm['J14'],axis=0)
-plt.plot(df_melt[[0]],dfdif)
-plt.show()
+fig4,ax4 = plt.subplots()
+dfdif = df_norm.sub(df_norm[referenceSample],axis=0)
+eventHandler4 = addEventHandler.eventHandler(fig4,ax4)
+dfdif.assign(Temperature=pd.Series(df_melt.ix[:,0]))
+generalPlot(filepath+"Difference Melt",dfdif,eventHandler4)
+del dfdif['Temperature']
+j+=1
 
 
 # ### Clustering
@@ -69,34 +103,19 @@ from IPython.display import display
 # In[ ]:
 
 mat = dfdif.T.as_matrix()
-hc = sc.KMeans(n_clusters=3)
+hc = sc.KMeans(n_clusters=clusterNumber)
 hc.fit(mat)
 
 labels = hc.labels_
 results = pd.DataFrame([dfdif.T.index,labels])
-display(results.ix[:0,results.ix[1]==0])
-display(results.ix[:0,results.ix[1]==1])
-display(results.ix[:0,results.ix[1]==2])
+printResults = ""
+for i in range(0,clusterNumber):
+	display(results.ix[:0,results.ix[1]==i])
+	printResults = printResults + str(results.ix[:0,results.ix[1]==i])+'\n'
+print printResults
+
+with open(filepath+'Results.txt','w') as f:
+	f.write(printResults)
 
 
-# My controls are 
-# * WT: I12, J12
-# * KO: I13, J13
-# * HET: I14, J14
-# 
-# So you can identify your genotyping results by looking at: to which control they cluster.
-
-# Ploting with plot.ly, so you can look at individual lines for better pattern recognition
-# In[ ]:
-import plotly.plotly as py
-import cufflinks as cf
-import plotly.graph_objs as go
-
-cf.set_config_file(offline=False, world_readable=True, theme='ggplot')
-
-dfpy = dfdif.set_index(df_melt.iloc[:,0])
-
-# Plot and embed in ipython notebook!
-dfpy.iplot(kind='scatter', filename='pyHRM')
-
-
+plt.show()
