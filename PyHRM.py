@@ -112,7 +112,7 @@ printResults = ""
 for i in range(0,clusterNumber):
 	printResults = printResults + str(results.ix[:0,results.ix[1]==i])+'\n'
 print printResults
-
+print "----------------------------------------"
 with open(filepath+'Results.txt','w') as f:
 	f.write(printResults)
 
