@@ -85,7 +85,7 @@ generalPlot(filepath,"Normalized Melt",df_norm,eventHandler3)
 fig4,ax4 = plt.subplots()
 dfdif = df_norm.sub(df_norm[referenceSample],axis=0)
 eventHandler4 = addEventHandler.eventHandler(fig4,ax4)
-dfdif.assign(Temperature=pd.Series(df_melt.ix[:,0]))
+dfdif = dfdif.assign(Temperature=pd.Series(df_melt.ix[:,0]))
 generalPlot(filepath,"Difference Melt",dfdif,eventHandler4)
 del dfdif['Temperature']
 j+=1
