@@ -3,9 +3,9 @@
 
 # ## Introduction
 
-# Please read a very nice introduction provided by Kapa BioSystems to understand, prepare and troubleshoot
+# Please read a very nice introduction provided by self.figureNumberapa BioSystems to understand, prepare and troubleshoot
 # 
-# http://www.kapabiosystems.com/document/introduction-high-resolution-melt-analysis-guide/
+# http://www.self.figureNumberapabiosystems.com/document/introduction-high-resolution-melt-analysis-guide/
 # 
 
 # ### Import Python modules for analysis
@@ -19,102 +19,156 @@ import addEventHandler
 import sklearn.cluster as sc
 # ### Read and Plot Melting Data
 
-# In[ ]:
-#get_ipython().magic(u'matplotlib inline')
-filename = 'test'
-referenceSample = 'C5'
-clusterNumber = 3
-minTemperature= 75
-maxTemperature = 81
 
-def linesPlot(df,eventHandler):
-	for column in df:
-		if column != "Temperature":
-			eventHandler.generate(df["Temperature"].values,df[column].values,column)
+class PYHRM():
 
+	def __init__(self):
+		
+		# Do not change this.
+		self.figureNumber = 1
 
-def generalPlot(filepath,title,df,eventHandler):
-
-	linesPlot(df,eventHandler)
-	plt.title(title)
-	plt.savefig(filepath+title+'.png')
+		# User Defined Variables.
+		self.filename = 'test'
+		self.referenceSample = 'J14'
+		self.clusterNumber = 3
+		self.minTemperature= 77
+		self.maxTemperature = 85
 
 
-j = 1
-df = pd.read_csv(filename+'.csv')
-filepath = filename + '/'
-if not os.path.exists(filepath[:-1]):
-    os.makedirs(filepath[:-1])
+	def linesPlot(self,df,eventHandler):
+
+		for column in df:
+			if column != "Temperature":
+				eventHandler.generate(df["Temperature"].values,df[column].values,column)
 
 
-fig,ax = plt.subplots()
-eventHandler1 = addEventHandler.eventHandler(fig,ax)
-generalPlot(filepath,"Component Melt",df,eventHandler1)
-j+=1
+	def generalPlot(self,title,df,eventHandler):
+
+		self.linesPlot(df,eventHandler)
+		plt.title(title)
+		plt.savefig(self.filepath+title+'.png')
 
 
-# ### Select melting range
+	def cluster(self, dfdif):
 
-# In[ ]:
+		mat = dfdif.T.as_matrix()
+		hc = sc.KMeans(n_clusters= self.clusterNumber)
+		hc.fit(mat)
 
-df_melt=df.ix[(df.iloc[:,0]>minTemperature) & (df.iloc[:,0]< maxTemperature)]
-df_data=df_melt.ix[:,1:]
-fig2,ax2 = plt.subplots()
-eventHandler2 = addEventHandler.eventHandler(fig2,ax2)
-generalPlot(filepath,"Temperature Melt",df_melt,eventHandler2)
+		labels = hc.labels_
+		results = pd.DataFrame([dfdif.T.index,labels])
+		printResults = ""
 
-j+=1
+		for i in range(0,self.clusterNumber):
+			tempResult = results.ix[:0,results.ix[1]==i]
+			tempPrint = ""
 
+			for column in tempResult:
+				tempPrint = tempPrint + tempResult[column][0] + " "
 
+			printResults = printResults + "Cluster " + str(i+1) +": " + tempPrint +'\n\n'
 
-
-# ### Normalizing 
-
-# In[ ]:
-
-df_norm= (df_data - df_data.min()) / (df_data.max()-df_data.min())*100
-
-
-fig3,ax3 = plt.subplots()
-eventHandler3 = addEventHandler.eventHandler(fig3,ax3)
-df_norm = df_norm.assign(Temperature=pd.Series(df_melt.ix[:,0]))
-generalPlot(filepath,"Normalized Melt",df_norm,eventHandler3)
-
-# ### Calculate and Show Diff Plot 
-
-fig4,ax4 = plt.subplots()
-dfdif = df_norm.sub(df_norm[referenceSample],axis=0)
-eventHandler4 = addEventHandler.eventHandler(fig4,ax4)
-dfdif = dfdif.assign(Temperature=pd.Series(df_melt.ix[:,0]))
-generalPlot(filepath,"Difference Melt",dfdif,eventHandler4)
-del dfdif['Temperature']
-j+=1
+		print printResults
+		print "----------------------------------------"
+		with open(self.filepath+'Results.txt','w') as f:
+			f.write(printResults)
 
 
-# ### Clustering
+	def calculateDiff(self, df_norm, df_melt):
 
-# Use KMeans module from SciKit-Learn to cluster your sample into three groups (WT, KO, HET). Be careful, your samples may have less than three groups. So always check the diff plots first.
+		fig4,ax4 = plt.subplots()
 
-# In[ ]:
+		dfdif = df_norm.sub(df_norm[self.referenceSample],axis=0)
+		eventHandler4 = addEventHandler.eventHandler(fig4,ax4)
+		dfdif = dfdif.assign(Temperature=pd.Series(df_melt.ix[:,0]))
+		self.generalPlot("Difference Melt",dfdif,eventHandler4)
+		del dfdif['Temperature']
+		self.figureNumber += 1
+
+		return dfdif, eventHandler4
 
 
 
+	def normalization(self, df_data, df_melt):
 
-# In[ ]:
+		df_norm= (df_data - df_data.min()) / (df_data.max()-df_data.min())*100
+		fig3,ax3 = plt.subplots()
+		eventHandler3 = addEventHandler.eventHandler(fig3,ax3)
+		df_norm = df_norm.assign(Temperature=pd.Series(df_melt.ix[:,0]))
+		self.generalPlot("Normalized Melt",df_norm,eventHandler3)
 
-mat = dfdif.T.as_matrix()
-hc = sc.KMeans(n_clusters=clusterNumber)
-hc.fit(mat)
-
-labels = hc.labels_
-results = pd.DataFrame([dfdif.T.index,labels])
-printResults = ""
-for i in range(0,clusterNumber):
-	printResults = printResults + str(results.ix[:0,results.ix[1]==i])+'\n'
-print printResults
-print "----------------------------------------"
-with open(filepath+'Results.txt','w') as f:
-	f.write(printResults)
+		return df_norm, eventHandler3
 
 
-plt.show()
+	def showTemperatureMelt(self, df):
+
+		df_melt=df.ix[(df.iloc[:,0]>self.minTemperature) & (df.iloc[:,0]< self.maxTemperature)]
+		df_data=df_melt.ix[:,1:]
+		fig2,ax2 = plt.subplots()
+		eventHandler2 = addEventHandler.eventHandler(fig2,ax2)
+		self.generalPlot("Temperature Melt",df_melt,eventHandler2)
+
+		self.figureNumber += 1
+
+		return df_melt, df_data, eventHandler2
+
+
+	def showComponentMelt(self, df):
+
+		fig,ax = plt.subplots()
+		eventHandler1 = addEventHandler.eventHandler(fig,ax)
+		self.generalPlot("Component Melt",df,eventHandler1)
+		self.figureNumber += 1
+
+		return eventHandler1
+
+
+	def fileHandler(self):
+		'''
+			This method opens the file in question and generates a folder to store the output.
+		'''
+		df = pd.read_csv(self.filename+'.csv')
+		self.filepath = self.filename + '/'
+		if not os.path.exists(self.filepath[:-1]):
+			os.makedirs(self.filepath[:-1])
+
+		if 'Temperature' not in df:
+			print "The first column of the imported file must be named Temperature."
+			self.wait()
+			exit(0)
+		elif self.referenceSample not in df:
+			print "There is not column named "+self.referenceSample+" in the imported file."
+			self.wait()
+			exit(0)
+
+		return df
+
+
+	def wait(self):
+		raw_input("Press Enter to continue...")
+
+
+	def run(self):
+		'''
+			This method calls all the other methods.
+		'''
+		df = self.fileHandler()
+
+		eventHandler1 = self.showComponentMelt(df)
+
+		[dfMelt, dfData, eventHandler2] = self.showTemperatureMelt(df)
+
+		dfNorm, eventHandler3 = self.normalization( dfData, dfMelt)
+
+		[dfDiff, eventHandler4] = self.calculateDiff(dfNorm, dfMelt)
+
+		self.cluster(dfDiff)
+
+		plt.show()
+
+
+
+
+if __name__ == "__main__":
+    pyHRM = PYHRM()
+    pyHRM.run()
